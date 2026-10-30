@@ -35,15 +35,43 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS rates (
+  category TEXT PRIMARY KEY,
+  percent  REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS recurring (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind     TEXT NOT NULL,
+  category TEXT NOT NULL,
+  amount   REAL NOT NULL,
+  day      INTEGER NOT NULL,
+  note     TEXT NOT NULL DEFAULT '',
+  active   INTEGER NOT NULL DEFAULT 1
+);
 `;
 
-const COLS = ['date', 'kind', 'channel', 'category', 'note', 'amount', 'commission', 'delivery', 'packaging', 'label'];
+// Столбцы, добавленные после первого релиза: старые базы дополняются при запуске.
+const ADDED_COLUMNS = [
+  ['source', "TEXT NOT NULL DEFAULT 'manual'"],
+  ['external_id', 'TEXT'],
+  ['estimated', 'INTEGER NOT NULL DEFAULT 0'],
+  ['recurring_key', 'TEXT'],
+];
+
+const EDIT_COLS = ['date', 'kind', 'channel', 'category', 'note', 'amount', 'commission', 'delivery', 'packaging', 'label', 'estimated'];
+const ALL_COLS = [...EDIT_COLS, 'source', 'external_id', 'recurring_key'];
+
+const pick = (obj, cols) => Object.fromEntries(cols.map((c) => [c, obj[c] ?? null]));
 
 function openStore(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL;');
   db.exec(SCHEMA);
+  const have = new Set(db.prepare('PRAGMA table_info(entries)').all().map((c) => c.name));
+  for (const [name, def] of ADDED_COLUMNS) if (!have.has(name)) db.exec(`ALTER TABLE entries ADD COLUMN ${name} ${def}`);
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_entries_external ON entries(external_id) WHERE external_id IS NOT NULL');
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_entries_recurring ON entries(recurring_key) WHERE recurring_key IS NOT NULL');
 
   const now = () => new Date().toISOString();
   const tx = (fn) => {
@@ -72,9 +100,9 @@ function openStore(file) {
 
   const insertRow = (e, user) => {
     const t = now();
-    const r = db.prepare(`INSERT INTO entries (${COLS.join(',')}, created_by, updated_by, created_at, updated_at)
-      VALUES (${COLS.map((c) => '@' + c).join(',')}, @user, @user, @t, @t)`)
-      .run({ ...e, user, t });
+    const r = db.prepare(`INSERT INTO entries (${ALL_COLS.join(',')}, created_by, updated_by, created_at, updated_at)
+      VALUES (${ALL_COLS.map((c) => '@' + c).join(',')}, @user, @user, @t, @t)`)
+      .run({ ...pick(e, ALL_COLS), user, t });
     return Number(r.lastInsertRowid);
   };
 
@@ -100,7 +128,21 @@ function openStore(file) {
       });
     },
 
-    /** Массовая вставка (импорт); одна запись в журнале на весь пакет. */
+    /** Вставка с защитой от повторов по external_id / recurring_key. Возвращает запись или null. */
+    insertUnique(e, user, { silent = false } = {}) {
+      return tx(() => {
+        const dup = e.external_id
+          ? db.prepare('SELECT id FROM entries WHERE external_id = ?').get(e.external_id)
+          : e.recurring_key ? db.prepare('SELECT id FROM entries WHERE recurring_key = ?').get(e.recurring_key) : null;
+        if (dup) return null;
+        const id = insertRow(e, user);
+        if (!silent) log(user, 'create', id, describe(e));
+        bumpRev();
+        return get(id);
+      });
+    },
+
+    /** Массовая вставка (импорт, синхронизация); одна запись в журнале на весь пакет. */
     insertMany(list, user, label) {
       return tx(() => {
         for (const e of list) insertRow(e, user);
@@ -113,12 +155,31 @@ function openStore(file) {
     update(id, e, user) {
       return tx(() => {
         if (!get(id)) return null;
-        db.prepare(`UPDATE entries SET ${COLS.map((c) => `${c} = @${c}`).join(', ')},
+        db.prepare(`UPDATE entries SET ${EDIT_COLS.map((c) => `${c} = @${c}`).join(', ')},
           updated_by = @user, updated_at = @t WHERE id = @id`)
-          .run({ ...e, user, t: now(), id });
+          .run({ ...pick(e, EDIT_COLS), user, t: now(), id });
         log(user, 'update', id, describe(e));
         bumpRev();
         return get(id);
+      });
+    },
+
+    /** Точечное обновление нескольких записей (сверка, пересчёт ставок). */
+    patchMany(patches, user, summary) {
+      return tx(() => {
+        const stmt = db.prepare(`UPDATE entries SET commission = @commission, delivery = @delivery,
+          estimated = @estimated, updated_by = @user, updated_at = @t WHERE id = @id`);
+        const t = now();
+        for (const p of patches) stmt.run({ commission: p.commission, delivery: p.delivery, estimated: p.estimated ? 1 : 0, user, t, id: p.id });
+        if (patches.length) { log(user, 'update', null, `${summary}: ${patches.length}`); bumpRev(); }
+        return patches.length;
+      });
+    },
+
+    setNote(id, note, estimated, user) {
+      return tx(() => {
+        db.prepare('UPDATE entries SET note = ?, estimated = ?, updated_by = ?, updated_at = ? WHERE id = ?').run(note, estimated ? 1 : 0, user, now(), id);
+        bumpRev();
       });
     },
 
@@ -135,6 +196,50 @@ function openStore(file) {
 
     activity(limit = 100) {
       return db.prepare('SELECT * FROM activity ORDER BY id DESC LIMIT ?').all(limit);
+    },
+    logActivity: (user, action, summary) => { log(user, action, null, summary); bumpRev(); },
+
+    // --- ставки комиссии по категориям Kaspi ---
+    rates: () => db.prepare('SELECT category, percent FROM rates ORDER BY category').all(),
+    setRate(category, percent, user) {
+      tx(() => {
+        db.prepare('INSERT INTO rates(category, percent) VALUES(?, ?) ON CONFLICT(category) DO UPDATE SET percent = excluded.percent').run(category, percent);
+        log(user, 'update', null, `Ставка «${category}»: ${percent}%`);
+        bumpRev();
+      });
+    },
+    removeRate(category, user) {
+      tx(() => {
+        db.prepare('DELETE FROM rates WHERE category = ?').run(category);
+        log(user, 'delete', null, `Ставка «${category}» удалена`);
+        bumpRev();
+      });
+    },
+
+    // --- регулярные платежи ---
+    recurring: () => db.prepare('SELECT * FROM recurring ORDER BY day, id').all(),
+    addRecurring(r, user) {
+      return tx(() => {
+        const res = db.prepare('INSERT INTO recurring(kind, category, amount, day, note) VALUES(?,?,?,?,?)')
+          .run(r.kind, r.category, r.amount, r.day, r.note);
+        log(user, 'create', null, `Регулярный платёж: ${r.category} ${r.amount} (${r.day}-го)`);
+        bumpRev();
+        return Number(res.lastInsertRowid);
+      });
+    },
+    setRecurringActive(id, active, user) {
+      tx(() => {
+        db.prepare('UPDATE recurring SET active = ? WHERE id = ?').run(active ? 1 : 0, id);
+        log(user, 'update', null, `Регулярный платёж #${id}: ${active ? 'включён' : 'выключен'}`);
+        bumpRev();
+      });
+    },
+    removeRecurring(id, user) {
+      tx(() => {
+        db.prepare('DELETE FROM recurring WHERE id = ?').run(id);
+        log(user, 'delete', null, `Регулярный платёж #${id} удалён`);
+        bumpRev();
+      });
     },
   };
 }

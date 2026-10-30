@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const COOKIE = 'kaspi_session';
 const TTL_MS = 30 * 24 * 3600 * 1000;
 
-/** "Руслан:пароль1,Жена:пароль2" → [{name, password}] */
+/** "Руслан:пароль1,Айгуль:пароль2" → [{name, password}] */
 function parseUsers(spec) {
   const users = [];
   for (const part of String(spec || '').split(',')) {

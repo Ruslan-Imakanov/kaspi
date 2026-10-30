@@ -36,8 +36,12 @@ function toMoney(v) {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/** Приводит ввод к виду, пригодному для записи. Возвращает { value } или { error }. */
-function normalize(input) {
+/**
+ * Приводит ввод к виду, пригодному для записи. Возвращает { value } или { error }.
+ * trusted=true (синхронизация, регулярные платежи) разрешает задавать source/external_id/recurring_key;
+ * ввод пользователя может влиять только на признак «приблизительно».
+ */
+function normalize(input, { trusted = false } = {}) {
   const e = input || {};
   const kind = e.kind;
   if (!KINDS.includes(kind)) return { error: 'Неизвестный тип операции' };
@@ -59,9 +63,19 @@ function normalize(input) {
     delivery: 0,
     packaging: 0,
     label: 0,
+    source: 'manual',
+    external_id: null,
+    estimated: 0,
+    recurring_key: null,
   };
+  if (trusted) {
+    out.source = ['manual', 'kaspi', 'import', 'recurring'].includes(e.source) ? e.source : 'manual';
+    out.external_id = e.external_id ? String(e.external_id).slice(0, 80) : null;
+    out.recurring_key = e.recurring_key ? String(e.recurring_key).slice(0, 40) : null;
+  }
 
   if (kind === 'sale') {
+    out.estimated = e.estimated ? 1 : 0; // значения подобраны автоматически и ещё не сверены
     out.channel = e.channel ?? 'shop';
     if (!CHANNELS.includes(out.channel)) return { error: 'Неизвестный канал' };
     for (const f of MONEY_FIELDS) {
@@ -72,6 +86,8 @@ function normalize(input) {
     if (out.commission + out.delivery + out.packaging + out.label > out.amount * 5) {
       return { error: 'Удержания выглядят слишком большими — проверьте цифры' };
     }
+    // у ручного ввода «приблизительно» без подобранных значений бессмысленно; заказы Kaspi без ставки остаются непроверенными
+    if (!trusted && out.commission + out.delivery === 0) out.estimated = 0;
   }
   return { value: out };
 }

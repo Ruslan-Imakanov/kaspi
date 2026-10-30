@@ -50,7 +50,7 @@
   const state = {
     user: null, meta: null, view: 'overview',
     period: store.get('period', 'month'), custom: store.get('custom', {}),
-    stats: null, entries: [], rev: 0, shown: 100,
+    stats: null, entries: [], pending: [], review: 0, rev: 0, shown: 100,
     filters: { kind: '', channel: '', q: '' },
     charts: [], loading: false,
   };
@@ -108,6 +108,7 @@
     ops: '<path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>',
     more: '<circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/>',
     add: '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/>',
+    auto: '<path d="M13 2L4 14h7l-1 8 9-12h-7z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/>',
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
@@ -119,6 +120,7 @@
           <button data-view="overview">${icon('overview')}Обзор</button>
           <button data-view="ops">${icon('ops')}Операции</button>
           <button class="add" data-add aria-label="Добавить операцию">${icon('add')}<span class="lbl" hidden>Добавить</span></button>
+          <button data-view="auto">${icon('auto')}Авто</button>
           <button data-view="more">${icon('more')}Ещё</button>
         </nav>
         <div class="who" title="Вы вошли как">${esc(state.user)}</div>
@@ -137,7 +139,8 @@
     render();
   }
 
-  function render() {
+  function render({ keepScroll = false } = {}) {
+    const y = window.scrollY;
     document.querySelectorAll('.nav [data-view]').forEach((b) => {
       if (b.dataset.view === state.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
@@ -146,8 +149,9 @@
     if (!main) return;
     if (state.view === 'overview') renderOverview(main);
     else if (state.view === 'ops') renderOps(main);
+    else if (state.view === 'auto') renderAuto(main);
     else renderMore(main);
-    window.scrollTo(0, 0);
+    window.scrollTo(0, keepScroll ? y : 0); // смена вкладки — наверх, фоновое обновление — на месте
   }
 
   // ---------- загрузка данных ----------
@@ -165,10 +169,13 @@
     if (!silent && $('#main')) $('#main').innerHTML = '<div class="grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>';
     try {
       const q = query();
-      const [stats, list] = await Promise.all([api(`/stats?${q}`), api(`/entries?${q}`)]);
+      const [stats, list, pend] = await Promise.all([api(`/stats?${q}`), api(`/entries?${q}`), api(`/pending?today=${today()}`)]);
       state.stats = stats; state.entries = list.entries; state.rev = Math.max(stats.rev, list.rev);
+      state.pending = pend.pending; state.review = pend.review;
       state.shown = 100;
-      if (!document.querySelector('dialog[open]') || !silent) render();
+      // фоновое обновление не трогает экран «Авто» (там формы с вводом) и не сбрасывает прокрутку
+      if (!silent) render();
+      else if (!document.querySelector('dialog[open]') && state.view !== 'auto') render({ keepScroll: true });
     } catch (e) {
       if (e.message !== 'auth' && $('#main')) $('#main').innerHTML = `<div class="empty">Не удалось загрузить данные.<br>${esc(e.message)}<br><br><button class="btn" id="retry">Повторить</button></div>`;
       $('#retry')?.addEventListener('click', () => load());
@@ -218,6 +225,7 @@
     const total = ch.shop.revenue + ch.pay.revenue;
 
     main.innerHTML = `
+      ${todoBlock()}
       ${periodBar()}
       <div class="grid kpis">
         <div class="card kpi"><div class="label">Выручка</div><div class="value num">${money0(s.revenue)}</div><div class="sub">${s.salesCount} продаж ${delta(s.revenue, p?.revenue)}</div></div>
@@ -257,7 +265,32 @@
         <tbody>${stats.months.map((m) => `<tr><td style="text-transform:capitalize">${fmtMonth(m.key)}</td><td class="num">${money0(m.revenue)}</td><td class="num">${money0(m.netSales)}</td><td class="num">${money0(m.expenses)}</td><td class="num ${m.profit < 0 ? 'neg' : 'pos'}">${money0(m.profit)}</td></tr>`).join('')}</tbody>
       </table></div></div>` : ''}`}`;
     bindPeriod();
+    bindTodo();
     if (!none) drawCharts();
+  }
+
+  // «К внесению»: регулярные платежи этого месяца и продажи с приблизительными удержаниями
+  function todoBlock() {
+    const items = state.pending.filter((p) => p.status !== 'later');
+    const later = state.pending.filter((p) => p.status === 'later');
+    if (!items.length && !later.length && !state.review) return '';
+    const row = (p) => `<div class="todo ${p.status}">
+        <div><b>${esc(p.category)}</b> · <span class="num">${money(p.amount)}</span>
+          <div class="muted" style="font-size:13px">${p.status === 'overdue' ? `просрочено на ${-p.daysLeft} дн.` : p.daysLeft === 0 ? 'сегодня' : `через ${p.daysLeft} дн.`} · ${parse(p.dueDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</div></div>
+        <button class="btn small" data-confirm="${p.id}" data-month="${p.key.split(':')[1]}">Внесено</button></div>`;
+    return `<div class="card section" style="margin:0 0 12px"><h2>К внесению</h2>
+      ${items.map(row).join('')}
+      ${later.length ? `<details><summary class="muted" style="cursor:pointer;padding:6px 0">Позже в этом месяце: ${later.length}</summary>${later.map(row).join('')}</details>` : ''}
+      ${state.review ? `<div class="todo review"><div><b>${state.review}</b> продаж с приблизительной комиссией/доставкой<div class="muted" style="font-size:13px">Сверьте с выплатой Kaspi — это одна цифра</div></div><button class="btn small ghost" data-goto="auto">Сверить</button></div>` : ''}
+    </div>`;
+  }
+  function bindTodo() {
+    document.querySelectorAll('[data-confirm]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { await api('/pending/confirm', { method: 'POST', body: { id: Number(b.dataset.confirm), month: b.dataset.month } }); toast('Внесено'); await load({ silent: true }); }
+      catch (e) { toast(e.message); b.disabled = false; }
+    }));
+    document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.goto)));
   }
 
   const PALETTE = ['#0f9d84', '#d9534f', '#2f80c9', '#e0a23a', '#8a63d2', '#6b7f78', '#d46aa5', '#4aa3a8'];
@@ -345,19 +378,19 @@
 
   function rowHtml(e) {
     const title = e.kind === 'sale' ? `Продажа · ${e.channel === 'pay' ? 'Kaspi Pay' : 'Магазин'}` : (e.category || state.meta.kinds[e.kind]);
-    const sub = [e.kind === 'sale' ? e.category : '', e.note, e.created_by].filter(Boolean).join(' · ');
+    const sub = [e.kind === 'sale' ? e.category : '', e.note, e.source === 'kaspi' ? '' : e.created_by].filter(Boolean).join(' · ');
     const amt = flow(e);
     const ded = e.kind === 'sale' ? e.commission + e.delivery + e.packaging + e.label : 0;
     return `<button class="row" data-id="${e.id}">
       <span class="dot" style="background:${KIND_COLOR[e.kind]}"></span>
-      <span><div class="t">${esc(title)}</div><div class="s">${esc(sub)}</div></span>
-      <span class="a num ${amt < 0 ? 'neg' : 'pos'}">${e.kind === 'sale' ? '+' + money(e.amount) : signed(amt)}${ded ? `<small>чистыми ${money(amt)}</small>` : ''}</span>
+      <span><div class="t">${esc(title)}${e.source === 'kaspi' ? ' <span class="tag">авто</span>' : e.source === 'recurring' ? ' <span class="tag">регулярный</span>' : ''}</div><div class="s">${esc(sub)}</div></span>
+      <span class="a num ${amt < 0 ? 'neg' : 'pos'}">${e.kind === 'sale' ? '+' + money(e.amount) : signed(amt)}${ded ? `<small>${e.estimated ? '≈ ' : ''}чистыми ${money(amt)}</small>` : ''}</span>
     </button>`;
   }
 
   // ---------- форма ----------
   function openForm(entry) {
-    const editing = !!entry;
+    const editing = !!(entry && entry.id); // объект без id — это «новая операция по образцу»
     const e = entry || { kind: 'sale', channel: store.get('lastChannel', 'shop'), date: today(), amount: '', commission: '', delivery: '', packaging: '', label: '', category: '', note: '' };
     const dlg = $('#sheet');
     const v = (n) => (e[n] === 0 || e[n] === '' || e[n] == null ? '' : e[n]);
@@ -392,10 +425,12 @@
         <div class="btns">
           <button class="btn" type="submit" data-act="save">Сохранить</button>
           ${editing ? '' : '<button class="btn ghost" type="submit" data-act="again">Сохранить и добавить ещё</button>'}
-          ${editing ? `<button class="btn danger" type="button" id="del">Удалить операцию</button><div class="muted" style="font-size:12px;text-align:center">Внёс: ${esc(e.created_by)} · ${fmtDateTime(e.created_at)}${e.updated_by !== e.created_by || e.updated_at !== e.created_at ? ` · изменил: ${esc(e.updated_by)} ${fmtDateTime(e.updated_at)}` : ''}</div>` : ''}
+          ${editing ? `<button class="btn ghost" type="button" id="dup">Повторить с сегодняшней датой</button><button class="btn danger" type="button" id="del">Удалить операцию</button><div class="muted" style="font-size:12px;text-align:center">Внёс: ${esc(e.created_by)} · ${fmtDateTime(e.created_at)}${e.updated_by !== e.created_by || e.updated_at !== e.created_at ? ` · изменил: ${esc(e.updated_by)} ${fmtDateTime(e.updated_at)}` : ''}</div>` : ''}
         </div>
       </form>`;
     const f = $('#entryForm');
+    let est = !!e.estimated && (Number(e.commission) > 0 || Number(e.delivery) > 0); // значения подобраны автоматически и не правились вручную
+    let userTouched = editing;
     const kind = () => f.kind.value;
     const num = (n) => Number(String(f[n].value).replace(/\s/g, '').replace(',', '.')) || 0;
 
@@ -413,9 +448,32 @@
     const hint = () => {
       if (kind() !== 'sale') return;
       const a = num('amount'); const ded = num('commission') + num('delivery') + num('packaging') + num('label');
-      $('#netHint').innerHTML = a ? `Чистыми: <b class="num">${money(a - ded)}</b>${num('commission') ? ` · комиссия ${pct(num('commission') / a)}` : ''}` : 'Введите сумму продажи — чистыми посчитаю сам';
+      $('#netHint').innerHTML = a ? `Чистыми: <b class="num">${money(a - ded)}</b>${num('commission') ? ` · комиссия ${pct(num('commission') / a)}` : ''}${est ? `<br>≈ подобрано автоматически (${sugNote || 'ранее'}). Поправьте, если знаете точно — иначе сверьте с выплатой Kaspi.` : ''}` : 'Введите сумму — комиссию и доставку подберу по вашей истории';
     };
-    f.addEventListener('input', hint);
+    f.addEventListener('input', (ev) => {
+      if (['commission', 'delivery', 'packaging', 'label'].includes(ev.target.name) && ev.isTrusted) { userTouched = true; est = false; }
+      if (ev.target.name === 'amount' || ev.target.name === 'category') suggestSoon();
+      hint();
+    });
+    f.querySelectorAll('[name=channel]').forEach((r) => r.addEventListener('change', suggestSoon));
+    let timer; let sugNote = ''; let inflight = null;
+    async function suggestNow() {
+      if (kind() !== 'sale' || userTouched || !num('amount')) return;
+      const asked = `${num('amount')}|${f.channel.value}|${f.category.value}`;
+      try {
+        const { suggestion: s } = await api(`/suggest?amount=${num('amount')}&channel=${f.channel.value}&category=${encodeURIComponent(f.category.value)}`);
+        const now = `${num('amount')}|${f.channel.value}|${f.category.value}`;
+        if (!s || userTouched || asked !== now) return; // ввод уже изменился — ответ устарел
+        f.commission.value = s.commission || ''; f.delivery.value = s.delivery || '';
+        est = (s.commission || 0) + (s.delivery || 0) > 0;
+        sugNote = s.basis === 'rate' ? 'по ставке категории' : `по ${s.samples} похожим продажам из вашей истории`;
+        hint();
+      } catch { /* подсказка необязательна */ }
+    }
+    function suggestSoon() {
+      clearTimeout(timer);
+      timer = setTimeout(() => { inflight = suggestNow(); }, 250);
+    }
     f.querySelectorAll('[name=kind]').forEach((r) => r.addEventListener('change', sync));
     $('#catChips').addEventListener('click', (ev) => { const b = ev.target.closest('[data-cat]'); if (b) { f.category.value = b.dataset.cat; } });
     dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
@@ -430,9 +488,15 @@
         kind: kind(), channel: kind() === 'sale' ? f.channel.value : null, date: f.date.value,
         amount: f.amount.value, commission: f.commission.value, delivery: f.delivery.value,
         packaging: f.packaging.value, label: f.label.value, category: f.category.value, note: f.note.value,
+        estimated: kind() === 'sale' && est,
       };
       const btns = f.querySelectorAll('button'); btns.forEach((b) => { b.disabled = true; });
       try {
+        // не сохраняем продажу с пустыми удержаниями, пока подсказка ещё в пути
+        clearTimeout(timer);
+        if (inflight) await inflight;
+        if (kind() === 'sale' && !userTouched && !num('commission') && !num('delivery')) await suggestNow();
+        body.commission = f.commission.value; body.delivery = f.delivery.value; body.estimated = kind() === 'sale' && est;
         await api(editing ? `/entries/${e.id}` : '/entries', { method: editing ? 'PUT' : 'POST', body });
         if (body.channel) store.set('lastChannel', body.channel);
         toast(editing ? 'Изменения сохранены' : 'Операция добавлена');
@@ -442,6 +506,10 @@
         if (err.message !== 'auth') { $('#formErr').textContent = err.message; btns.forEach((b) => { b.disabled = false; }); }
       }
     });
+    $('#dup')?.addEventListener('click', () => {
+      dlg.close();
+      openForm({ kind: e.kind, channel: e.channel, date: today(), amount: e.amount, commission: e.commission, delivery: e.delivery, packaging: e.packaging, label: e.label, category: e.category, note: '', estimated: e.estimated });
+    });
     $('#del')?.addEventListener('click', async () => {
       if (!confirm('Удалить эту операцию? Это действие запишется в журнал.')) return;
       try { await api(`/entries/${e.id}`, { method: 'DELETE' }); toast('Удалено'); dlg.close(); await load({ silent: true }); }
@@ -449,6 +517,146 @@
     });
     dlg.showModal();
     if (!editing) f.amount.focus();
+  }
+
+  // ---------- «Авто»: синхронизация, ставки, регулярные платежи, сверка ----------
+  async function renderAuto(main, kaspiMsg = '') {
+    const y = window.scrollY;
+    if (!main.querySelector('.stack')) main.innerHTML = '<div class="grid"><div class="skeleton"></div><div class="skeleton"></div></div>';
+    let kaspi; let rates; let rec;
+    try { [kaspi, rates, rec] = await Promise.all([api('/kaspi/status'), api('/rates'), api('/recurring')]); }
+    catch (e) { if (e.message !== 'auth') main.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+
+    const last = kaspi.last;
+    const lastLine = !last ? 'Ещё не запускалась'
+      : last.ok ? `Последняя синхронизация: ${fmtDateTime(last.at)} · новых продаж: ${last.added}`
+        : `<span class="neg">Ошибка (${fmtDateTime(last.at)}): ${esc(last.message)}</span>`;
+    const month = rangeFor('month');
+
+    main.innerHTML = `<div class="stack" style="max-width:720px;margin:0 auto">
+      <div class="card stack">
+        <h2>Kaspi Магазин: продажи вносятся сами</h2>
+        ${kaspi.configured ? `
+          <div>${lastLine}</div>
+          <div class="muted" style="font-size:13px">Сервер сам проверяет заказы раз в 30 минут и вносит только завершённые. Комиссия считается по ставкам ниже, а там, где ставки нет, подбирается по вашей истории. Такие продажи помечены «≈», пока вы не сверите их с выплатой.</div>
+          <div class="btns"><button class="btn ghost" id="kTest">Проверить без записи</button><button class="btn" id="kSync">Синхронизировать сейчас</button></div>
+          <div id="kOut" class="muted"></div>`
+        : `<div class="muted">Не подключено. Нужен токен продавца Kaspi Магазина: как его получить, описано в справке Kaspi («Как получить токен авторизации в Магазине на Kaspi.kz?» в разделе API на guide.kaspi.kz). Затем задайте его на сервере в переменной <b>KASPI_TOKEN</b> и перезапустите — здесь появятся кнопки.</div>
+           <div class="muted" style="font-size:13px">Kaspi Pay публичного API для выписки не даёт — для него остаются ввод с подсказками и сверка ниже.</div>`}
+      </div>
+
+      <div class="card stack">
+        <h2>Ставки комиссии по категориям</h2>
+        <div class="muted" style="font-size:13px">Комиссию задаёт Kaspi для каждой категории товара — приложение само ничего не «узнаёт». Укажите ставку один раз (так, как она выходит в вашем отчёте Kaspi, с НДС, если он у вас удерживается), и продажи этой категории считаются автоматически.</div>
+        ${rates.rates.length ? `<table><tbody>${rates.rates.map((r) => `<tr><td>${esc(r.category)}</td><td class="num">${nf.format(r.percent)}%</td><td><button class="chip" data-rate-del="${esc(r.category)}" aria-label="Удалить ставку ${esc(r.category)}">×</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">Ставок пока нет.</div>'}
+        ${rates.unknown.length ? `<div class="hint">Новые категории из заказов — задайте ставку:<div class="cats" style="margin-top:6px">${rates.unknown.map((u) => `<button class="chip" data-rate-pick="${esc(u.category)}">${esc(u.category)} · ${u.count}</button>`).join('')}</div></div>` : ''}
+        <form id="rateForm" class="two-col"><label class="field"><span>Категория (как в Kaspi)</span><input name="category" required maxlength="80"></label>
+          <label class="field"><span>Ставка, %</span><input name="percent" inputmode="decimal" required placeholder="12,5"></label>
+          <button class="btn" type="submit" style="grid-column:1/-1">Сохранить ставку</button></form>
+        <button class="btn ghost" id="recalc">Пересчитать приблизительные продажи по ставкам</button>
+        <div class="err" id="rateErr"></div>
+      </div>
+
+      <div class="card stack">
+        <h2>Регулярные платежи</h2>
+        <div class="muted" style="font-size:13px">Налог, соцотчисления, абонентская плата: на главной появится «К внесению», вносится одним нажатием.</div>
+        ${rec.recurring.length ? `<table><tbody>${rec.recurring.map((r) => `<tr style="${r.active ? '' : 'opacity:.5'}"><td>${esc(r.category)}<div class="muted" style="font-size:12px">${r.day}-го числа</div></td><td class="num">${money(r.amount)}</td>
+          <td style="white-space:nowrap"><button class="chip" data-rec-toggle="${r.id}" data-active="${r.active}">${r.active ? 'Выкл.' : 'Вкл.'}</button> <button class="chip" data-rec-del="${r.id}" aria-label="Удалить">×</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">Пока нет.</div>'}
+        ${rec.suggestions.length ? `<div class="hint">Нашёл в вашей истории повторяющиеся платежи:<div class="cats" style="margin-top:6px">${rec.suggestions.map((g, i) => `<button class="chip" data-rec-add="${i}">+ ${esc(g.category)} · ${money0(g.amount)} · ~${g.day}-го</button>`).join('')}</div></div>` : ''}
+        <form id="recForm" class="two-col">
+          <label class="field"><span>Категория</span><input name="category" required list="catListRec" maxlength="60"></label>
+          <label class="field"><span>Сумма</span><input name="amount" inputmode="decimal" required></label>
+          <label class="field"><span>День месяца</span><input name="day" type="number" min="1" max="31" required value="15"></label>
+          <label class="field"><span>Тип</span><select name="kind"><option value="expense">Расход</option><option value="withdrawal">Снятие</option><option value="topup">Пополнение</option></select></label>
+          <button class="btn" type="submit" style="grid-column:1/-1">Добавить регулярный платёж</button></form>
+        <datalist id="catListRec">${(state.meta.categories.expense || []).map((c) => `<option value="${esc(c)}">`).join('')}</datalist>
+        <div class="err" id="recErr"></div>
+      </div>
+
+      <div class="card stack">
+        <h2>Сверка с выплатой Kaspi</h2>
+        <div class="muted" style="font-size:13px">Когда Kaspi перечислил деньги, введите сумму поступления за период. Комиссия и доставка у продаж, помеченных «≈», подгонятся так, чтобы итог совпал до копейки. Сверенные вручную продажи не меняются.</div>
+        <form id="recoForm" class="stack">
+          <div class="two-col"><label class="field"><span>С</span><input type="date" name="from" value="${month.from}" required></label><label class="field"><span>По</span><input type="date" name="to" value="${month.to}" required></label></div>
+          <label class="field"><span>Поступило «чистыми», ₸</span><input name="actualNet" inputmode="decimal" required placeholder="0"></label>
+          <div class="btns"><button class="btn ghost" type="submit" data-act="dry">Посмотреть разницу</button><button class="btn" type="submit" data-act="apply" disabled>Применить сверку</button></div>
+          <div id="recoOut" class="muted"></div>
+        </form>
+      </div>
+    </div>`;
+
+    window.scrollTo(0, y); // обновление после действия не должно отбрасывать наверх
+    // --- Kaspi ---
+    const kOut = $('#kOut');
+    if (kOut && kaspiMsg) kOut.innerHTML = kaspiMsg;
+    const kRun = async (dry) => {
+      kOut.textContent = 'Запрашиваю Kaspi…';
+      try {
+        const r = await api(`/kaspi/sync${dry ? '?dryRun=1' : ''}`, { method: 'POST' });
+        kOut.innerHTML = `Заказов получено: <b>${r.fetched}</b>, завершённых: ${r.completed}, ${dry ? 'будет добавлено' : 'добавлено'}: <b>${r.added}</b>${r.returned ? `, возвратов/отмен к проверке: <b>${r.returned}</b>` : ''}.
+          ${r.unknownCategories.length ? `<div class="hint" style="margin-top:8px">Нет ставки для категорий: ${r.unknownCategories.map((u) => esc(u.category)).join(', ')}.</div>` : ''}
+          ${dry && r.sample.length ? `<div style="margin-top:8px">${r.sample.map((e) => `<div class="log-item">${esc(e.date)} · ${money(e.amount)} · комиссия ≈ ${money(e.commission)}<small>${esc(e.category || 'категория не указана')} · ${esc(e.note)}</small></div>`).join('')}</div>` : ''}`;
+        if (!dry) { const html = kOut.innerHTML; toast(`Добавлено продаж: ${r.added}`); await load({ silent: true }); await renderAuto(main, html); }
+      } catch (e) { kOut.innerHTML = `<span class="neg">${esc(e.message)}</span>`; }
+    };
+    $('#kTest')?.addEventListener('click', () => kRun(true));
+    $('#kSync')?.addEventListener('click', () => kRun(false));
+
+    // --- ставки ---
+    const rateErr = (m) => { $('#rateErr').textContent = m; };
+    $('#rateForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault(); const f = ev.target;
+      try { await api('/rates', { method: 'PUT', body: { category: f.category.value, percent: f.percent.value } }); toast('Ставка сохранена'); renderAuto(main); }
+      catch (e) { rateErr(e.message); }
+    });
+    document.querySelectorAll('[data-rate-del]').forEach((b) => b.addEventListener('click', async () => {
+      await api(`/rates?category=${encodeURIComponent(b.dataset.rateDel)}`, { method: 'DELETE' }); renderAuto(main);
+    }));
+    document.querySelectorAll('[data-rate-pick]').forEach((b) => b.addEventListener('click', () => {
+      const f = $('#rateForm'); f.category.value = b.dataset.ratePick; f.percent.focus();
+    }));
+    $('#recalc').addEventListener('click', async () => {
+      try { const r = await api('/rates/recalc', { method: 'POST' }); toast(`Пересчитано продаж: ${r.updated}`); await load({ silent: true }); }
+      catch (e) { rateErr(e.message); }
+    });
+
+    // --- регулярные платежи ---
+    const recErr = (m) => { $('#recErr').textContent = m; };
+    $('#recForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault(); const f = ev.target;
+      try { await api('/recurring', { method: 'POST', body: { kind: f.kind.value, category: f.category.value, amount: f.amount.value, day: f.day.value } }); toast('Добавлено'); await load({ silent: true }); renderAuto(main); }
+      catch (e) { recErr(e.message); }
+    });
+    document.querySelectorAll('[data-rec-add]').forEach((b) => b.addEventListener('click', async () => {
+      const g = rec.suggestions[Number(b.dataset.recAdd)];
+      try { await api('/recurring', { method: 'POST', body: { kind: g.kind, category: g.category, amount: g.amount, day: g.day } }); toast('Добавлено'); await load({ silent: true }); renderAuto(main); }
+      catch (e) { recErr(e.message); }
+    }));
+    document.querySelectorAll('[data-rec-toggle]').forEach((b) => b.addEventListener('click', async () => {
+      await api(`/recurring/${b.dataset.recToggle}`, { method: 'PUT', body: { active: b.dataset.active !== '1' } }); await load({ silent: true }); renderAuto(main);
+    }));
+    document.querySelectorAll('[data-rec-del]').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('Удалить регулярный платёж? Уже внесённые операции останутся.')) return;
+      await api(`/recurring/${b.dataset.recDel}`, { method: 'DELETE' }); await load({ silent: true }); renderAuto(main);
+    }));
+
+    // --- сверка ---
+    const reco = $('#recoForm'); const applyBtn = reco.querySelector('[data-act=apply]');
+    let act = 'dry';
+    reco.querySelectorAll('[type=submit]').forEach((b) => b.addEventListener('click', () => { act = b.dataset.act; }));
+    reco.addEventListener('input', () => { applyBtn.disabled = true; });
+    reco.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const body = { from: reco.from.value, to: reco.to.value, actualNet: reco.actualNet.value };
+      const out = $('#recoOut');
+      try {
+        const r = await api(`/reconcile${act === 'dry' ? '?dryRun=1' : ''}`, { method: 'POST', body });
+        if (act === 'dry') {
+          out.innerHTML = `Приблизительных продаж: <b>${r.count}</b>. Сейчас в учёте «чистыми» (по периоду): <b>${money(r.netBefore)}</b>, по выплате: <b>${money(r.netAfter)}</b>, разница: <b class="${r.difference < 0 ? 'neg' : 'pos'}">${signed(r.difference)}</b>.`;
+          applyBtn.disabled = false;
+        } else { out.innerHTML = `Готово: сверено продаж — ${r.count}, итог ${money(r.netAfter)}.`; toast('Сверено'); applyBtn.disabled = true; await load({ silent: true }); }
+      } catch (e) { out.innerHTML = `<span class="neg">${esc(e.message)}</span>`; }
+    });
   }
 
   // ---------- «Ещё» ----------
@@ -509,6 +717,7 @@
   // ---------- синхронизация между устройствами ----------
   async function poll() {
     if (!state.user || document.hidden || document.querySelector('dialog[open]')) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return; // не мешаем вводу
     try {
       const { rev } = await api('/rev');
       if (rev !== state.rev) { await load({ silent: true }); }
@@ -525,7 +734,7 @@
       state.user = state.meta.user;
     } catch { return; }
     const h = location.hash.slice(1);
-    if (['overview', 'ops', 'more'].includes(h)) state.view = h;
+    if (['overview', 'ops', 'auto', 'more'].includes(h)) state.view = h;
     renderShell();
     await load();
   }

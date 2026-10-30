@@ -7,7 +7,7 @@ const { createApp } = require('../server/app');
 const { computeStats } = require('../server/stats');
 
 async function boot(t) {
-  const { app } = createApp({ dbFile: ':memory:', users: [{ name: 'Руслан', password: 'p1' }, { name: 'Жена', password: 'p2' }] });
+  const { app } = createApp({ dbFile: ':memory:', users: [{ name: 'Руслан', password: 'p1' }, { name: 'Айгуль', password: 'p2' }] });
   const server = await new Promise((r) => { const s = app.listen(0, () => r(s)); });
   t.after(() => { server.closeAllConnections(); server.close(); });
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -36,7 +36,7 @@ test('вход обязателен, неверный пароль отклон�
 test('два пользователя видят одни и те же данные; автор записывается', async (t) => {
   const { server, login, call } = await boot(t);
   const a = call((await login('Руслан', 'p1')).cookie);
-  const b = call((await login('Жена', 'p2')).cookie);
+  const b = call((await login('Айгуль', 'p2')).cookie);
 
   const r1 = await a('POST', '/api/entries', { date: '2026-10-01', kind: 'sale', channel: 'shop', amount: 2400, commission: 386.11, delivery: 173 });
   assert.equal(r1.status, 201);
@@ -45,11 +45,11 @@ test('два пользователя видят одни и те же данн�
 
   const list = (await (await a('GET', '/api/entries')).json()).entries;
   assert.equal(list.length, 2);
-  assert.deepEqual(list.map((e) => e.created_by).sort(), ['Жена', 'Руслан']);
+  assert.deepEqual(list.map((e) => e.created_by).sort(), ['Айгуль', 'Руслан']);
 
   const id = (await r1.json()).entry.id;
   const upd = await b('PUT', `/api/entries/${id}`, { date: '2026-10-01', kind: 'sale', channel: 'shop', amount: 2500, commission: 386.11, delivery: 173 });
-  assert.equal((await upd.json()).entry.updated_by, 'Жена');
+  assert.equal((await upd.json()).entry.updated_by, 'Айгуль');
   assert.equal((await b('DELETE', `/api/entries/${id}`)).status, 200);
   assert.equal((await b('DELETE', `/api/entries/${id}`)).status, 404);
 
@@ -174,4 +174,13 @@ test('импорт: понятная ошибка для файла без за�
   const res = await a('POST', '/api/import', Buffer.from(await wb.xlsx.writeBuffer()));
   assert.equal(res.status, 400);
   assert.match((await res.json()).error, /заголовков/);
+});
+
+test('«приблизительно» не ставится без удержаний', async (t) => {
+  const { login, call } = await boot(t);
+  const a = call((await login('Руслан', 'p1')).cookie);
+  const e = (await (await a('POST', '/api/entries', { date: '2026-10-01', kind: 'sale', amount: 1000, estimated: true })).json()).entry;
+  assert.equal(e.estimated, 0);
+  const e2 = (await (await a('POST', '/api/entries', { date: '2026-10-01', kind: 'sale', amount: 1000, commission: 100, estimated: true })).json()).entry;
+  assert.equal(e2.estimated, 1);
 });

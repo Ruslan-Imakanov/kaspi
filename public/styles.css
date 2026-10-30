@@ -44,7 +44,7 @@ button { cursor: pointer; }
 .nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; height: calc(var(--nav-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom); background: var(--surface); border-top: 1px solid var(--line);
-  display: grid; grid-template-columns: repeat(4, 1fr); align-items: center;
+  display: grid; grid-template-columns: repeat(5, 1fr); align-items: center;
 }
 .nav button {
   background: none; border: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -173,3 +173,12 @@ dialog::backdrop { background: rgba(8,16,14,.55); }
 .skeleton { height: 90px; border-radius: var(--radius); background: linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2)); background-size: 200% 100%; animation: sh 1.2s infinite; }
 @keyframes sh { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } #toast { transition: none; } }
+
+/* --- «К внесению», бейджи, мелкие кнопки --- */
+.todo { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.todo:first-of-type { border-top: 0; }
+.todo.overdue b { color: var(--neg); }
+.todo.soon b { color: var(--warn); }
+.btn.small { padding: 8px 14px; min-height: 40px; font-size: 14px; white-space: nowrap; }
+.tag { font-size: 11px; font-weight: 600; background: var(--accent-soft); color: var(--accent); padding: 1px 7px; border-radius: 99px; vertical-align: middle; }
+details summary { list-style: revert; }
