@@ -68,33 +68,26 @@ function createAuth({ users, secret }) {
   };
 
   return {
-    login(req, res) {
-      const ip = req.ip;
-      if (blocked(ip)) return res.status(429).json({ error: 'Слишком много попыток. Попробуйте через 15 минут.' });
-      const { name, password } = req.body || {};
+    /** Возвращает { status, error } или { status: 200, user, token }. */
+    login({ ip, name, password }) {
+      if (blocked(ip)) return { status: 429, error: 'Слишком много попыток. Попробуйте через 15 минут.' };
       const user = users.find((u) => u.name.toLowerCase() === String(name || '').trim().toLowerCase());
       // сравниваем в любом случае, чтобы не выдавать наличие имени по времени ответа
       const ok = safeEqual(password ?? '', user ? user.password : '\0') && !!user;
-      if (!ok) { fail(ip); return res.status(401).json({ error: 'Неверное имя или пароль' }); }
+      if (!ok) { fail(ip); return { status: 401, error: 'Неверное имя или пароль' }; }
       failures.delete(ip);
-      const token = sign({ u: user.name, exp: Date.now() + TTL_MS }, secret);
-      res.cookie(COOKIE, token, {
-        httpOnly: true, sameSite: 'lax', secure: req.secure, maxAge: TTL_MS, path: '/',
-      });
-      res.json({ user: user.name });
+      return { status: 200, user: user.name, token: sign({ u: user.name, exp: Date.now() + TTL_MS }, secret) };
     },
-    logout(req, res) {
-      res.clearCookie(COOKIE, { path: '/' });
-      res.json({ ok: true });
-    },
-    middleware(req, res, next) {
-      const p = verify(parseCookies(req.headers.cookie)[COOKIE], secret);
-      const user = p && users.find((u) => u.name === p.u);
-      if (!user) return res.status(401).json({ error: 'Требуется вход' });
-      req.user = user.name;
-      next();
+    /** Имя пользователя по заголовку Cookie или null. */
+    userFrom(cookieHeader) {
+      const p = verify(parseCookies(cookieHeader)[COOKIE], secret);
+      return (p && users.find((u) => u.name === p.u)?.name) || null;
     },
   };
 }
 
-module.exports = { parseUsers, createAuth, sign, verify };
+const sessionCookie = (token, secure) =>
+  `${COOKIE}=${token}; Max-Age=${Math.floor(TTL_MS / 1000)}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
+const clearCookie = (secure) => `${COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
+
+module.exports = { parseUsers, createAuth, sign, verify, sessionCookie, clearCookie };

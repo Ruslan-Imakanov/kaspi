@@ -1,9 +1,5 @@
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
-const { DatabaseSync } = require('node:sqlite');
-
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS entries (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,28 +59,20 @@ const ALL_COLS = [...EDIT_COLS, 'source', 'external_id', 'recurring_key'];
 
 const pick = (obj, cols) => Object.fromEntries(cols.map((c) => [c, obj[c] ?? null]));
 
-function openStore(file) {
-  if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
-  const db = new DatabaseSync(file);
-  db.exec('PRAGMA journal_mode = WAL;');
+/** driver: { exec(sql), prepare(sql) -> {run,get,all}, tx(fn) } — Node-драйвер или Cloudflare Durable Object. */
+function openStore(driver) {
+  const db = driver;
   db.exec(SCHEMA);
-  const have = new Set(db.prepare('PRAGMA table_info(entries)').all().map((c) => c.name));
-  for (const [name, def] of ADDED_COLUMNS) if (!have.has(name)) db.exec(`ALTER TABLE entries ADD COLUMN ${name} ${def}`);
+  for (const [name, def] of ADDED_COLUMNS) {
+    try { db.exec(`ALTER TABLE entries ADD COLUMN ${name} ${def}`); } catch (err) {
+      if (!/duplicate column/i.test(String(err && err.message))) throw err; // столбец уже есть — это нормально
+    }
+  }
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_entries_external ON entries(external_id) WHERE external_id IS NOT NULL');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_entries_recurring ON entries(recurring_key) WHERE recurring_key IS NOT NULL');
 
   const now = () => new Date().toISOString();
-  const tx = (fn) => {
-    db.exec('BEGIN IMMEDIATE');
-    try {
-      const r = fn();
-      db.exec('COMMIT');
-      return r;
-    } catch (err) {
-      db.exec('ROLLBACK');
-      throw err;
-    }
-  };
+  const tx = (fn) => db.tx(fn);
 
   const getSetting = (key) => db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? null;
   const setSetting = (key, value) =>
@@ -100,16 +88,14 @@ function openStore(file) {
 
   const insertRow = (e, user) => {
     const t = now();
-    const r = db.prepare(`INSERT INTO entries (${ALL_COLS.join(',')}, created_by, updated_by, created_at, updated_at)
-      VALUES (${ALL_COLS.map((c) => '@' + c).join(',')}, @user, @user, @t, @t)`)
-      .run({ ...pick(e, ALL_COLS), user, t });
-    return Number(r.lastInsertRowid);
+    return db.prepare(`INSERT INTO entries (${ALL_COLS.join(',')}, created_by, updated_by, created_at, updated_at)
+      VALUES (${ALL_COLS.map((c) => '@' + c).join(',')}, @user, @user, @t, @t) RETURNING id`)
+      .get({ ...pick(e, ALL_COLS), user, t }).id;
   };
 
   const describe = (e) => `${e.date} · ${e.kind} · ${e.amount}${e.category ? ' · ' + e.category : ''}`;
 
   return {
-    db,
     getSetting,
     setSetting,
     rev: () => Number(getSetting('rev') ?? 0),
@@ -220,11 +206,11 @@ function openStore(file) {
     recurring: () => db.prepare('SELECT * FROM recurring ORDER BY day, id').all(),
     addRecurring(r, user) {
       return tx(() => {
-        const res = db.prepare('INSERT INTO recurring(kind, category, amount, day, note) VALUES(?,?,?,?,?)')
-          .run(r.kind, r.category, r.amount, r.day, r.note);
+        const id = db.prepare('INSERT INTO recurring(kind, category, amount, day, note) VALUES(?,?,?,?,?) RETURNING id')
+          .get(r.kind, r.category, r.amount, r.day, r.note).id;
         log(user, 'create', null, `Регулярный платёж: ${r.category} ${r.amount} (${r.day}-го)`);
         bumpRev();
-        return Number(res.lastInsertRowid);
+        return id;
       });
     },
     setRecurringActive(id, active, user) {

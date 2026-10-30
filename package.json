@@ -10,11 +10,24 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --no-warnings --test \"test/*.test.js\""
+    "test": "node --no-warnings --test \"test/*.test.js\"",
+    "worker:dev": "wrangler dev --local",
+    "worker:deploy": "wrangler deploy",
+    "vendor": "cp node_modules/chart.js/dist/chart.umd.js public/vendor/chart.js"
   },
   "dependencies": {
     "chart.js": "^4.6.1",
     "exceljs": "^4.4.0",
     "express": "^4.22.3"
+  },
+  "devDependencies": {
+    "wrangler": "^4.156.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "APP_USERS": {
+        "description": "Логины и пароли двух пользователей в формате Имя:пароль,Имя:пароль — например Руслан:ВашПароль1,Айгуль:ВашПароль2. Пароль не короче 8 символов, без запятых и двоеточий. Замените значения-образцы на свои!"
+      }
+    }
   }
 }

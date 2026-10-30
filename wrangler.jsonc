@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kaspi-ledger",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  "durable_objects": { "bindings": [{ "name": "APP", "class_name": "AppDO" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AppDO"] }],
+  "triggers": { "crons": ["*/30 * * * *"] },
+  "observability": { "enabled": true }
+}
