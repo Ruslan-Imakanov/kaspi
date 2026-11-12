@@ -22,12 +22,55 @@
   burger.addEventListener('click', function () { setMenu(burger.getAttribute('aria-expanded') !== 'true'); });
   nav.addEventListener('click', function (e) { if (e.target.closest('a')) setMenu(false); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
-  window.addEventListener('resize', function () { if (window.innerWidth > 920) setMenu(false); });
+  window.addEventListener('resize', function () { if (window.innerWidth > 1040) setMenu(false); });
 
-  /* Default WhatsApp greeting on every WhatsApp link */
+  /* WhatsApp links: data-wa="text" sets the message, empty data-wa uses the greeting */
   var greeting = 'Здравствуйте! Хочу заказать оценку.';
+  function waLink(text) { return 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(text); }
   document.querySelectorAll('a[data-wa]').forEach(function (a) {
-    a.href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(greeting);
+    a.href = waLink(a.getAttribute('data-wa') || greeting);
+  });
+
+  /* Documents tabs (ARIA tabs pattern) */
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function selectTab(tab, focus) {
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    if (focus) tab.focus();
+  }
+  tabs.forEach(function (tab, i) {
+    tab.addEventListener('click', function () { selectTab(tab); });
+    tab.addEventListener('keydown', function (e) {
+      var next = null;
+      if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+      if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+      if (e.key === 'Home') next = tabs[0];
+      if (e.key === 'End') next = tabs[tabs.length - 1];
+      if (next) { e.preventDefault(); selectTab(next, true); }
+    });
+  });
+
+  /* Copy promo code */
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    var status = btn.parentNode.querySelector('.promo__copied');
+    btn.addEventListener('click', function () {
+      var code = btn.getAttribute('data-copy');
+      function done(ok) {
+        if (!status) return;
+        status.textContent = ok ? 'Промокод скопирован' : 'Промокод: ' + code;
+        clearTimeout(btn._t);
+        btn._t = setTimeout(function () { status.textContent = ''; }, 2500);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(function () { done(true); }, function () { done(false); });
+      } else {
+        done(false);
+      }
+    });
   });
 
   /* Request form -> WhatsApp message */
@@ -58,8 +101,9 @@
     ];
     var comment = String(data.get('comment') || '').trim();
     if (comment) lines.push('Комментарий: ' + comment);
+    if (data.get('promo')) lines.push('Промокод: ' + data.get('promo'));
 
-    window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(lines.join('\n')), '_blank', 'noopener');
+    window.open(waLink(lines.join('\n')), '_blank', 'noopener');
   });
   form.elements.phone.addEventListener('input', function () {
     if (this.value.replace(/\D/g, '').length >= 10) {
@@ -81,10 +125,7 @@
         if (link) link.classList.add('is-active');
       });
     }, { rootMargin: '-45% 0px -50% 0px' });
-    ['home'].concat(Object.keys(byId)).forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) spy.observe(el);
-    });
+    document.querySelectorAll('main > section[id]').forEach(function (el) { spy.observe(el); });
 
     /* Reveal on scroll */
     var reveal = new IntersectionObserver(function (entries) {
