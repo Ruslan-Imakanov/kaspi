@@ -1,0 +1,10 @@
+{
+  // Cloudflare Worker that serves the ADAL PRICE site.
+  // Build first: node deploy/build-worker.mjs
+  // Deploy:      npx wrangler deploy -c deploy/wrangler.jsonc
+  "name": "adal-price",
+  "main": ".build/worker.mjs",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": true,
+  "preview_urls": false
+}

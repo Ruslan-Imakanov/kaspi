@@ -36,6 +36,18 @@ adal-price/
 - Адрес: Астана, ул. А. Янушкевича 1, офис 208; Пн–Пт 10:00–18:00.
 - Instagram: `@adal__price`.
 
+## Публикация (Cloudflare Workers)
+Сайт опубликован как Cloudflare Worker `adal-price`: https://adal-price.imakanovr.workers.dev
+
+Весь сайт упаковывается в один скрипт, поэтому отдельная загрузка статических файлов не нужна:
+```bash
+cd adal-price
+node deploy/build-worker.mjs                       # собирает deploy/.build/worker.mjs
+npx wrangler@4.156.0 deploy -c deploy/wrangler.jsonc
+```
+На адресе `*.workers.dev` страница помечена `X-Robots-Tag: noindex`, чтобы предпросмотр не попал в поиск.
+На своём домене (подключается в Cloudflare → Workers → adal-price → Domains) индексация работает обычным образом.
+
 ## Что уточнить перед запуском
 - Номер офиса: в большинстве постов 208, в одном — 207. На сайте указан 208.
 - Акция CREDIT10%: если закончится — удалить блок `<section class="promo">`, плашку `promo-pill` в первом экране и галочку в форме.
