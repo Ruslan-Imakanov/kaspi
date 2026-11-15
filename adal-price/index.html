@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
@@ -19,7 +19,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Marck+Script&family=Montserrat:wght@600;700;800&display=swap&subset=cyrillic" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Marck+Script&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/styles.css">
 
   <script type="application/ld+json">
@@ -43,6 +43,8 @@
       "opens": "10:00",
       "closes": "18:00"
     }],
+    "geo": { "@type": "GeoCoordinates", "latitude": 51.159306, "longitude": 71.461265 },
+    "hasMap": "https://2gis.kz/astana/firm/70000001061093479",
     "areaServed": ["Астана", "Казахстан"],
     "sameAs": ["https://www.instagram.com/adal__price/", "https://wa.me/77075251000"]
   }
@@ -51,7 +53,7 @@
 <body>
 
 <!-- Icon sprite (Lucide-style line icons, ISC licence) -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
   <defs>
     <symbol id="i-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></symbol>
     <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
@@ -83,6 +85,7 @@
     <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
     <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8M16 13H8M16 17H8"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></symbol>
     <symbol id="i-wa" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></symbol>
   </defs>
 </svg>
@@ -91,7 +94,7 @@
 
 <header class="header" id="top">
   <div class="container header__row">
-    <a class="brand" href="#top" aria-label="ADAL PRICE — на главную">
+    <a class="brand" href="#top">
       <img class="brand__mark" src="assets/img/logo-mark-240.png" alt="" width="240" height="178">
       <span class="brand__text">
         <span class="brand__name"><span class="c-navy">ADAL</span> <span class="c-red">PRICE</span></span>
@@ -105,12 +108,12 @@
       <a href="#documents">Документы</a>
       <a href="#about">О компании</a>
       <a href="#contacts">Контакты</a>
-      <a class="nav__phone-mobile" href="tel:+77075251000">+7 707 525 10 00</a>
+      <a class="nav__phone-mobile" href="tel:+77075251000">+7&nbsp;707&nbsp;525&nbsp;10&nbsp;00</a>
     </nav>
 
     <div class="header__actions">
       <a class="header__phone" href="tel:+77075251000">
-        <svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>+7 707 525 10 00
+        <svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>+7&nbsp;707&nbsp;525&nbsp;10&nbsp;00
       </a>
       <a class="btn btn--wa btn--sm" href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa>
         <svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg><span>WhatsApp</span>
@@ -139,13 +142,17 @@
           коммерческая недвижимость, доли в бизнесе, транспорт и оборудование.
         </p>
         <div class="hero__cta">
-          <a class="btn btn--primary" href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa>
+          <a class="btn btn--primary btn--shine" href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa>
             <svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg>Консультация в WhatsApp
           </a>
           <a class="btn btn--ghost" href="tel:+77075251000">
             <svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>Позвонить
           </a>
         </div>
+        <a class="hero__rating" href="https://2gis.kz/astana/firm/70000001061093479/tab/reviews" target="_blank" rel="noopener">
+          <span class="stars" aria-hidden="true"><svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg></span>
+          <span><strong>5,0</strong> · 35 отзывов в 2ГИС</span>
+        </a>
         <ul class="hero__points">
           <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Квалифицированные оценщики</li>
           <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Выезд на объект</li>
@@ -311,7 +318,7 @@
         <h2>Четыре шага до готового отчёта</h2>
       </div>
 
-      <ol class="steps">
+      <ol class="steps" data-draw>
         <li class="step reveal">
           <span class="step__num">01</span>
           <span class="step__icon"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg></span>
@@ -381,7 +388,7 @@
           <p class="docs__other"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg>Для земли, транспорта, оборудования и бизнеса список зависит от объекта — уточним в WhatsApp.</p>
         </div>
 
-        <aside class="docs__side">
+        <div class="docs__side">
           <div class="infobox reveal">
             <h3>Где взять справку о зарегистрированных правах</h3>
             <ol class="infobox__ways">
@@ -398,7 +405,7 @@
               <svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg>Отправить в WhatsApp
             </a>
           </div>
-        </aside>
+        </div>
       </div>
     </div>
   </section>
@@ -436,7 +443,7 @@
         </div>
       </div>
 
-      <aside class="adal reveal">
+      <div class="adal reveal">
         <div class="ribbon ribbon--card" aria-hidden="true"></div>
         <p class="adal__word">Адал</p>
         <p class="adal__meaning">по-казахски — <strong>«честный, справедливый»</strong></p>
@@ -444,7 +451,7 @@
         <p class="adal__script">Стоимость нельзя просто назначить</p>
         <p>Она должна быть обоснована документами, анализом и применёнными методами оценки. Недостоверные сведения могут привести к серьёзным последствиям.</p>
         <p class="adal__slogan">Ваша уверенность в цифрах</p>
-      </aside>
+      </div>
     </div>
   </section>
 
@@ -485,8 +492,8 @@
         <h2>Нужна оценка?</h2>
         <p class="section__lead">Расскажите об объекте — уточним сроки и список документов именно для вашего случая. Заявка откроется в WhatsApp, останется только нажать «Отправить».</p>
         <ul class="request__contacts">
-          <li><svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg><a href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa>WhatsApp: +7 707 525 10 00</a></li>
-          <li><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg><a href="tel:+77075251000">Позвонить: +7 707 525 10 00</a></li>
+          <li><svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg><a href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa>WhatsApp: +7&nbsp;707&nbsp;525&nbsp;10&nbsp;00</a></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg><a href="tel:+77075251000">Позвонить:&nbsp;+7&nbsp;707&nbsp;525&nbsp;10&nbsp;00</a></li>
           <li><svg class="ic" aria-hidden="true"><use href="#i-insta"/></svg><a href="https://www.instagram.com/adal__price/" target="_blank" rel="noopener">Instagram: @adal__price</a></li>
         </ul>
       </div>
@@ -569,27 +576,31 @@
           </li>
           <li>
             <span class="contacts__icon"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg></span>
-            <div><strong>Телефон и WhatsApp</strong><a href="tel:+77075251000">+7 707 525 10 00</a></div>
+            <div><strong>Телефон и WhatsApp</strong><a href="tel:+77075251000">+7&nbsp;707&nbsp;525&nbsp;10&nbsp;00</a></div>
           </li>
           <li>
             <span class="contacts__icon"><svg class="ic" aria-hidden="true"><use href="#i-insta"/></svg></span>
             <div><strong>Instagram</strong><a href="https://www.instagram.com/adal__price/" target="_blank" rel="noopener">@adal__price</a></div>
+          </li>
+          <li>
+            <span class="contacts__icon"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg></span>
+            <div><strong>Отзывы в 2ГИС</strong><a href="https://2gis.kz/astana/firm/70000001061093479/tab/reviews" target="_blank" rel="noopener">5,0 ★ · 35 отзывов</a></div>
           </li>
         </ul>
         <div class="contacts__cta">
           <a class="btn btn--primary" href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa>
             <svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg>Написать в WhatsApp
           </a>
-          <a class="btn btn--light" href="https://2gis.kz/astana/search/%D0%AF%D0%BD%D1%83%D1%88%D0%BA%D0%B5%D0%B2%D0%B8%D1%87%D0%B0%201" target="_blank" rel="noopener">
+          <a class="btn btn--light" href="https://2gis.kz/astana/firm/70000001061093479" target="_blank" rel="noopener">
             <svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg>Открыть в 2ГИС
           </a>
         </div>
       </div>
       <div class="map">
-        <span class="map__fallback">Карта загружается…<br><a href="https://2gis.kz/astana/search/%D0%AF%D0%BD%D1%83%D1%88%D0%BA%D0%B5%D0%B2%D0%B8%D1%87%D0%B0%201" target="_blank" rel="noopener">Открыть адрес в 2ГИС</a></span>
+        <span class="map__fallback">Карта загружается…<br><a href="https://2gis.kz/astana/firm/70000001061093479" target="_blank" rel="noopener">Открыть адрес в 2ГИС</a></span>
         <iframe
-          title="ADAL PRICE на карте: Астана, ул. А. Янушкевича 1"
-          src="https://maps.google.com/maps?q=%D0%90%D1%81%D1%82%D0%B0%D0%BD%D0%B0%2C%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%20%D0%AF%D0%BD%D1%83%D1%88%D0%BA%D0%B5%D0%B2%D0%B8%D1%87%D0%B0%201&z=16&output=embed"
+          title="ADAL PRICE на карте: Астана, ул. Адольфа Янушкевича, 1"
+          src="https://maps.google.com/maps?q=51.159306,71.461265&z=16&hl=ru&output=embed"
           loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
       </div>
     </div>
@@ -598,7 +609,7 @@
 
 <footer class="footer">
   <div class="container footer__row">
-    <a class="brand brand--footer" href="#top" aria-label="ADAL PRICE — наверх">
+    <a class="brand brand--footer" href="#top">
       <img class="brand__mark" src="assets/img/logo-mark-240.png" alt="" width="240" height="178" loading="lazy">
       <span class="brand__text">
         <span class="brand__name"><span class="c-navy">ADAL</span> <span class="c-red">PRICE</span></span>
@@ -614,13 +625,30 @@
     </nav>
     <p class="footer__copy">© <span id="year">2026</span> ТОО «Адал Прайс» · Астана</p>
   </div>
+  <div class="container credit">
+    <p class="credit__line">
+      <span>Сайт создан в</span>
+      <span class="credit__brand">
+        <svg class="credit__mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="bd-sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb547"/><stop offset="1" stop-color="#ff4f6d"/></linearGradient>
+            <clipPath id="bd-sky"><rect width="24" height="16.5"/></clipPath>
+          </defs>
+          <rect width="24" height="24" rx="7" fill="#14213d"/>
+          <g clip-path="url(#bd-sky)"><circle class="credit__sun" cx="12" cy="17" r="6" fill="url(#bd-sun)"/></g>
+          <path d="M5 17.5h14" stroke="#ffffff" stroke-opacity=".85" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <span class="credit__name">Bastau Digital</span>
+      </span>
+    </p>
+  </div>
 </footer>
 
 <!-- Mobile bottom bar -->
-<div class="dock" aria-label="Быстрая связь">
+<nav class="dock" aria-label="Быстрая связь">
   <a class="dock__btn" href="tel:+77075251000"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>Позвонить</a>
   <a class="dock__btn dock__btn--wa" href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa><svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg>WhatsApp</a>
-</div>
+</nav>
 
 <script src="assets/main.js" defer></script>
 </body>

@@ -24,11 +24,14 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
   window.addEventListener('resize', function () { if (window.innerWidth > 1040) setMenu(false); });
 
-  /* WhatsApp links: data-wa="text" sets the message, empty data-wa uses the greeting */
+  /* WhatsApp links: data-wa="text" sets the message (empty = greeting),
+     data-wa-to="7..." sends it to another number (used by the developer credit). */
   var greeting = 'Здравствуйте! Хочу заказать оценку.';
-  function waLink(text) { return 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(text); }
+  function waLink(text, to) {
+    return 'https://wa.me/' + String(to || WA_NUMBER).replace(/\D/g, '') + '?text=' + encodeURIComponent(text);
+  }
   document.querySelectorAll('a[data-wa]').forEach(function (a) {
-    a.href = waLink(a.getAttribute('data-wa') || greeting);
+    a.href = waLink(a.getAttribute('data-wa') || greeting, a.getAttribute('data-wa-to'));
   });
 
   /* Documents tabs (ARIA tabs pattern) */
@@ -136,12 +139,15 @@
         }
       });
     }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
-    document.querySelectorAll('.reveal').forEach(function (el, i) {
-      el.style.transitionDelay = (i % 4) * 70 + 'ms';
+    document.querySelectorAll('.reveal').forEach(function (el) {
+      /* cards in one row appear one after another */
+      var index = Array.prototype.indexOf.call(el.parentNode.children, el);
+      el.style.animationDelay = (index % 6) * 90 + 'ms';
       reveal.observe(el);
     });
+    document.querySelectorAll('[data-draw]').forEach(function (el) { reveal.observe(el); });
   } else {
-    document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('is-visible'); });
+    document.querySelectorAll('.reveal, [data-draw]').forEach(function (el) { el.classList.add('is-visible'); });
   }
 
   /* Footer year */
