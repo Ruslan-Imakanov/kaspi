@@ -394,7 +394,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 @keyframes ribbon-in { from { opacity: 0; translate: 70px -70px; } to { opacity: .95; translate: 0 0; } }
 @keyframes draw { from { scale: 0 1; } to { scale: 1 1; } }
 @keyframes float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
-@keyframes shine { from { translate: -130% 0; } to { translate: 330% 0; } }
+@keyframes shine { from { transform: translateX(-130%); } to { transform: translateX(330%); } }
 
 @media (prefers-reduced-motion: no-preference) {
   .hero__copy > * { animation: rise .9s var(--ease) both; }
@@ -413,7 +413,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .btn:hover { translate: 0 -2px; }
   .btn:active { translate: 0 1px; }
   .btn--shine { position: relative; overflow: hidden; isolation: isolate; }
-  .btn--shine::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 35%; z-index: -1; pointer-events: none; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .35), transparent); animation: shine 1.3s var(--ease) 1.7s both; }
+  .btn--shine::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 35%; z-index: -1; pointer-events: none; transform: translateX(-130%); background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .35), transparent); animation: shine 1.3s var(--ease) 1.7s both; }
 
   .js .reveal { opacity: 0; }
   .js .reveal.is-visible { animation: rise .85s var(--ease) both; }
@@ -425,6 +425,12 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@media print {
+  .js .reveal { opacity: 1 !important; animation: none !important; }
+  .dock, .burger, .map, .ribbon { display: none !important; }
+  .header { position: static; }
 }
 
 /* ---------- Responsive ---------- */
