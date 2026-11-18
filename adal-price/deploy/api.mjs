@@ -1,8 +1,10 @@
 // API for the "Благодарственные письма" cabinet: public list + files, password-protected admin actions.
 // Storage — one SQLite-backed Durable Object (class LettersStore, binding LETTERS):
 //   kv('auth')     {"salt","hash","key"}: password HMAC-SHA256 with a random salt; "key" signs sessions
-//   kv('letters')  [{id,title,date,kind,w,h,added}], newest first
-//   files          (id, part, n) -> chunks of: full JPEG (long side ≤ 2000 px), thumb JPEG (≤ 600 px) or pdf
+//   kv('letters')  [{id,title,date,pages:[[w,h],...],added}], newest first
+//   files          (id, part, n) -> chunks of JPEG pages p1..p10 (long side ≤ 2000 px) and thumb (≤ 600 px)
+// Every letter is stored as pictures: the cabinet turns a photo into one page and draws each PDF page
+// with PDF.js in the browser, so visitors read the letter right on the site.
 // Passwords: while no password is stored, the ADMIN_BOOTSTRAP secret works once and becomes the stored one.
 // Forgot it: set the ADMIN_RESET secret, sign in with it (it replaces the stored password), then delete the secret.
 
@@ -65,7 +67,9 @@ export class LettersStore extends DurableObject {
 const COOKIE = 'ap_session';
 const SESSION_DAYS = 7;
 const MAX_LETTERS = 100;
-const LIMIT = { full: 6 * 1024 * 1024, thumb: 1024 * 1024, pdf: 10 * 1024 * 1024 };
+const MAX_PAGES = 10;
+// 10 MB per letter keeps one upload well inside the CPU time of a Workers request
+const LIMIT = { page: 6 * 1024 * 1024, thumb: 1024 * 1024, total: 10 * 1024 * 1024 };
 const ID = '[a-z0-9-]{6,40}';
 const enc = new TextEncoder();
 
@@ -119,9 +123,8 @@ async function signedIn(request, auth) {
 }
 
 const isJpeg = (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
-const isPdf = (b) => b.length > 4 && b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46; // %PDF
 const fileBytes = async (value) => (value && typeof value === 'object' && 'arrayBuffer' in value ? new Uint8Array(await value.arrayBuffer()) : null);
-const publicView = (l) => ({ id: l.id, title: l.title, date: l.date, kind: l.kind, w: l.w, h: l.h });
+const publicView = (l) => ({ id: l.id, title: l.title, date: l.date, pages: l.pages });
 const storeOf = (env) => env.LETTERS.get(env.LETTERS.idFromName('letters'));
 const newId = () => Date.now().toString(36) + '-' + [...crypto.getRandomValues(new Uint8Array(6))].map((b) => (b % 36).toString(36)).join('');
 
@@ -132,18 +135,13 @@ export async function handleApi(request, env, url) {
   const store = storeOf(env);
 
   // public: letter files (ids never change, so they are cached for a year)
-  let m = path.match(new RegExp(`^/letters/(${ID})/(full|thumb)\\.jpg$`)) || path.match(new RegExp(`^/letters/(${ID})\\.(pdf)$`));
+  let m = path.match(new RegExp(`^/letters/(${ID})/(thumb|p(?:10|[1-9]))\\.jpg$`));
   if (m) {
     if (method !== 'GET' && method !== 'HEAD') return fail(405, 'Method not allowed');
     const data = await store.file(m[1], m[2]);
     if (!data) return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-    const pdf = m[2] === 'pdf';
     return new Response(method === 'HEAD' ? null : data, {
-      headers: {
-        'Content-Type': pdf ? 'application/pdf' : 'image/jpeg',
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        ...(pdf ? { 'Content-Disposition': 'inline; filename="letter.pdf"' } : {}),
-      },
+      headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' },
     });
   }
 
@@ -191,6 +189,7 @@ export async function handleApi(request, env, url) {
   if (path === '/api/letters' && method === 'POST') {
     const count = ((await store.getJson('letters')) || []).length;
     if (count >= MAX_LETTERS) return fail(400, `На сайте уже ${MAX_LETTERS} писем — удалите старые`);
+    if (Number(request.headers.get('Content-Length')) > LIMIT.total + 64 * 1024) return fail(413, 'Письмо больше 10 МБ — загрузите PDF с меньшим числом страниц');
     let form;
     try {
       form = await request.formData();
@@ -199,24 +198,23 @@ export async function handleApi(request, env, url) {
     }
     const title = clean(form.get('title'), 120);
     if (!title) return fail(400, 'Укажите, от кого письмо');
-    const entry = { id: newId(), title, date: clean(form.get('date'), 40), kind: form.get('kind') === 'pdf' ? 'pdf' : 'image', added: new Date().toISOString() };
 
-    let files;
-    if (entry.kind === 'pdf') {
-      const pdf = await fileBytes(form.get('pdf'));
-      if (!pdf || !isPdf(pdf)) return fail(400, 'Нужен файл PDF');
-      if (pdf.length > LIMIT.pdf) return fail(413, 'PDF больше 10 МБ');
-      files = { pdf };
-    } else {
-      const [full, thumb] = await Promise.all([fileBytes(form.get('full')), fileBytes(form.get('thumb'))]);
-      if (!full || !thumb || !isJpeg(full) || !isJpeg(thumb)) return fail(400, 'Нужно фото письма');
-      if (full.length > LIMIT.full || thumb.length > LIMIT.thumb) return fail(413, 'Фото слишком большое');
-      const w = Math.round(Number(form.get('w')));
-      const h = Math.round(Number(form.get('h')));
-      entry.w = w > 0 && w <= 4000 ? w : 1000;
-      entry.h = h > 0 && h <= 4000 ? h : 1414;
-      files = { full, thumb };
-    }
+    // pages: "sizes" = [[w,h],...] and JPEG files p1..pN, plus one small thumb for the grid
+    let sizes = null;
+    try {
+      sizes = JSON.parse(String(form.get('sizes') || ''));
+    } catch (e) { /* checked below */ }
+    if (!Array.isArray(sizes) || !sizes.length || sizes.length > MAX_PAGES) return fail(400, 'Нужно фото или PDF письма');
+    const pages = sizes.map((s) => [Math.round(Number(s && s[0])), Math.round(Number(s && s[1]))]);
+    if (pages.some(([w, h]) => !(w > 0 && w <= 4000 && h > 0 && h <= 4000))) return fail(400, 'Нужно фото или PDF письма');
+    const files = { thumb: await fileBytes(form.get('thumb')) };
+    for (let i = 1; i <= pages.length; i++) files['p' + i] = await fileBytes(form.get('p' + i));
+    const parts = Object.entries(files);
+    if (parts.some(([, bytes]) => !bytes || !isJpeg(bytes))) return fail(400, 'Нужно фото или PDF письма');
+    if (files.thumb.length > LIMIT.thumb || parts.some(([part, bytes]) => part !== 'thumb' && bytes.length > LIMIT.page)) return fail(413, 'Файл слишком большой');
+    if (parts.reduce((sum, [, bytes]) => sum + bytes.length, 0) > LIMIT.total) return fail(413, 'Письмо больше 10 МБ — загрузите PDF с меньшим числом страниц');
+
+    const entry = { id: newId(), title, date: clean(form.get('date'), 40), pages, added: new Date().toISOString() };
     const letters = await store.add(entry, files);
     return json({ ok: true, letters: letters.map(publicView) });
   }

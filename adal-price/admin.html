@@ -44,13 +44,14 @@
     <div class="admin__app" id="app-view" hidden>
       <section class="admin__card">
         <h1>Добавить письмо</h1>
-        <p>Сфотографируйте или отсканируйте письмо. Подходят фото (JPG, PNG) и PDF до 10 МБ — фото уменьшится само.</p>
+        <p>Загрузите письмо в PDF или фото (JPG, PNG). PDF сразу превратится в изображение — на сайте письмо читается без скачивания.</p>
         <form class="admin__form" id="upload-form">
           <label class="field">
             <span>Файл письма <em>*</em></span>
-            <input name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+            <input name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required>
           </label>
           <img class="admin__preview" id="preview" src="data:," alt="Предпросмотр письма" hidden>
+          <p class="admin__note" id="file-note" role="status" hidden></p>
           <label class="field">
             <span>От кого <em>*</em></span>
             <input name="title" type="text" maxlength="120" placeholder="Например, ТОО «Компания»" required>

@@ -269,9 +269,6 @@
               <a class="btn btn--primary" id="calc-wa" href="https://wa.me/77075251000" target="_blank" rel="noopener">
                 <svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg>Заказать точную оценку
               </a>
-              <a class="btn btn--light" id="calc-krisha" href="https://krisha.kz/prodazha/kvartiry/astana/" target="_blank" rel="noopener">
-                <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span id="calc-krisha-text">Квартиры на Krisha.kz</span>
-              </a>
             </div>
           </div>
         </div>
@@ -791,7 +788,10 @@
   </button>
   <figure class="lightbox__figure">
     <img id="lightbox-img" src="data:," alt="">
-    <figcaption id="lightbox-cap"></figcaption>
+    <figcaption>
+      <span id="lightbox-cap"></span>
+      <button class="lightbox__zoom" type="button" id="lightbox-zoom"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span>Увеличить</span></button>
+    </figcaption>
   </figure>
   <button class="lightbox__btn lightbox__nav lightbox__nav--next" type="button" data-step="1" aria-label="Следующее письмо">
     <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg>

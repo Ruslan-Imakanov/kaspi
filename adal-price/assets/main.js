@@ -202,9 +202,6 @@
         'Комнат: ' + text(f.rooms),
         'Примерный расчёт на сайте: ' + range
       ].join('\n'));
-      var rooms = f.rooms.value;
-      document.getElementById('calc-krisha').href = 'https://krisha.kz/prodazha/kvartiry/astana/?das%5Blive.rooms%5D=' + rooms;
-      document.getElementById('calc-krisha-text').textContent = rooms + '-комнатные на Krisha.kz';
 
       document.getElementById('calc-placeholder').hidden = true;
       var answer = document.getElementById('calc-answer');
@@ -225,60 +222,66 @@
       .then(function (data) {
         var letters = (data && data.letters) || [];
         if (!letters.length) return;
-        var images = letters.filter(function (l) { return l.kind !== 'pdf'; });
         var grid = document.getElementById('letters-grid');
         var dialog = document.getElementById('lightbox');
+        var figure = dialog.querySelector('.lightbox__figure');
         var big = document.getElementById('lightbox-img');
         var caption = document.getElementById('lightbox-cap');
-        var current = 0;
-        var svgIcon = function (id) {
-          var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-          svg.setAttribute('class', 'ic');
-          svg.setAttribute('aria-hidden', 'true');
-          use.setAttribute('href', id);
-          svg.appendChild(use);
-          return svg;
-        };
+        var zoomBtn = document.getElementById('lightbox-zoom');
+        var prev = dialog.querySelector('[data-step="-1"]');
+        var next = dialog.querySelector('[data-step="1"]');
         var label = function (l) { return l.title + (l.date ? ' · ' + l.date : ''); };
 
-        function openLetter(i) {
-          current = (i + images.length) % images.length;
-          var l = images[current];
-          big.src = '/letters/' + l.id + '/full.jpg';
-          big.width = l.w;
-          big.height = l.h;
-          big.alt = 'Благодарственное письмо: ' + l.title;
-          caption.textContent = label(l);
+        /* every page of every letter is one slide: the arrows go through the pages, then on to the next letter */
+        var slides = [];
+        var starts = [];
+        letters.forEach(function (l) {
+          starts.push(slides.length);
+          l.pages.forEach(function (size, p) { slides.push({ l: l, p: p, w: size[0], h: size[1] }); });
+        });
+        var current = 0;
+
+        /* zoomed: the letter at reading size, scrolled inside the window */
+        function zoom(on) {
+          dialog.classList.toggle('is-zoomed', on);
+          zoomBtn.querySelector('span').textContent = on ? 'Уменьшить' : 'Увеличить';
+          figure.scrollTop = 0;
+          figure.scrollLeft = 0;
+        }
+
+        function show(i) {
+          current = (i + slides.length) % slides.length;
+          var s = slides[current];
+          var n = s.l.pages.length;
+          zoom(false);
+          big.src = '/letters/' + s.l.id + '/p' + (s.p + 1) + '.jpg';
+          big.width = s.w;
+          big.height = s.h;
+          big.alt = 'Благодарственное письмо: ' + s.l.title + (n > 1 ? ', страница ' + (s.p + 1) : '');
+          caption.textContent = label(s.l) + (n > 1 ? ' · стр. ' + (s.p + 1) + ' из ' + n : '');
+          prev.setAttribute('aria-label', s.p > 0 ? 'Предыдущая страница' : 'Предыдущее письмо');
+          next.setAttribute('aria-label', s.p < n - 1 ? 'Следующая страница' : 'Следующее письмо');
           if (!dialog.showModal) { window.open(big.src, '_blank', 'noopener'); return; }
           if (!dialog.open) dialog.showModal();
         }
 
-        letters.forEach(function (l) {
+        letters.forEach(function (l, i) {
           var item = document.createElement('li');
-          var card;
-          if (l.kind === 'pdf') {
-            card = document.createElement('a');
-            card.href = '/letters/' + l.id + '.pdf';
-            card.target = '_blank';
-            card.rel = 'noopener';
-            card.className = 'letter letter--pdf';
-            var doc = document.createElement('span');
-            doc.className = 'letter__doc';
-            doc.appendChild(svgIcon('#i-file'));
-            card.appendChild(doc);
-          } else {
-            card = document.createElement('button');
-            card.type = 'button';
-            card.className = 'letter';
-            var img = document.createElement('img');
-            img.src = '/letters/' + l.id + '/thumb.jpg';
-            img.alt = 'Благодарственное письмо: ' + l.title;
-            img.loading = 'lazy';
-            img.width = 600;
-            img.height = Math.round(600 * (l.h || 1414) / (l.w || 1000));
-            card.appendChild(img);
-            card.addEventListener('click', function () { openLetter(images.indexOf(l)); });
+          var card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'letter';
+          var img = document.createElement('img');
+          img.src = '/letters/' + l.id + '/thumb.jpg';
+          img.alt = 'Благодарственное письмо: ' + l.title;
+          img.loading = 'lazy';
+          img.width = 600;
+          img.height = Math.round(600 * l.pages[0][1] / l.pages[0][0]);
+          card.appendChild(img);
+          if (l.pages.length > 1) {
+            var count = document.createElement('span');
+            count.className = 'letter__pages';
+            count.textContent = l.pages.length + ' стр.';
+            card.appendChild(count);
           }
           var title = document.createElement('span');
           title.className = 'letter__title';
@@ -290,20 +293,24 @@
             date.textContent = l.date;
             card.appendChild(date);
           }
+          card.addEventListener('click', function () { show(starts[i]); });
           item.appendChild(card);
           grid.appendChild(item);
         });
 
-        dialog.querySelectorAll('[data-step]').forEach(function (btn) {
-          btn.hidden = images.length < 2;
-          btn.addEventListener('click', function () { openLetter(current + Number(btn.getAttribute('data-step'))); });
+        [prev, next].forEach(function (btn) {
+          btn.hidden = slides.length < 2;
+          btn.addEventListener('click', function () { show(current + Number(btn.getAttribute('data-step'))); });
+        });
+        [big, zoomBtn].forEach(function (el) {
+          el.addEventListener('click', function () { zoom(!dialog.classList.contains('is-zoomed')); });
         });
         dialog.querySelector('[data-close]').addEventListener('click', function () { dialog.close(); });
         dialog.addEventListener('click', function (e) { if (e.target === dialog) dialog.close(); });
         dialog.addEventListener('keydown', function (e) {
-          if (images.length < 2) return;
-          if (e.key === 'ArrowRight') openLetter(current + 1);
-          if (e.key === 'ArrowLeft') openLetter(current - 1);
+          if (slides.length < 2) return;
+          if (e.key === 'ArrowRight') show(current + 1);
+          if (e.key === 'ArrowLeft') show(current - 1);
         });
         lettersBox.hidden = false;
       })
