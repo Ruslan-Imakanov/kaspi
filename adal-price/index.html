@@ -103,8 +103,8 @@
     </a>
 
     <nav class="nav" id="nav" aria-label="Основное меню">
+      <a href="#calculator">Калькулятор</a>
       <a href="#services">Услуги</a>
-      <a href="#process">Как работаем</a>
       <a href="#documents">Документы</a>
       <a href="#about">О компании</a>
       <a href="#contacts">Контакты</a>
@@ -133,7 +133,7 @@
     <div class="ribbon ribbon--tr" aria-hidden="true"></div>
     <div class="container hero__grid">
       <div class="hero__copy">
-        <a class="promo-pill" href="#promo"><b>−10%</b> на оценку для кредита · промокод CREDIT10%</a>
+        <a class="promo-pill" href="#promo"><b>−10%</b> новым клиентам · промокоды SOCIAL10 и REALTY10</a>
         <p class="eyebrow">Оценочная компания · Астана и весь Казахстан</p>
         <h1 class="hero__title">Оценка недвижимости, бизнеса и&nbsp;имущества в&nbsp;Астане</h1>
         <p class="script hero__script">Точная оценка —<br>уверенные решения!</p>
@@ -173,6 +173,111 @@
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- CALCULATOR -->
+  <section class="section" id="calculator">
+    <div class="container">
+      <div class="section__head">
+        <p class="eyebrow">Онлайн-калькулятор</p>
+        <h2>Сколько стоит ваша квартира</h2>
+        <p class="section__lead">Примерная рыночная стоимость квартиры на вторичном рынке Астаны. Точную стоимость определит оценщик после осмотра.</p>
+      </div>
+
+      <div class="calc reveal">
+        <form class="calc__form" id="calc-form" novalidate data-avg="617300">
+          <label class="field">
+            <span>Район</span>
+            <select name="district">
+              <option value="esil">Есиль</option>
+              <option value="nura">Нура</option>
+              <option value="sarayshyk">Сарайшык</option>
+              <option value="almaty">Алматинский</option>
+              <option value="saryarka">Сарыарка</option>
+              <option value="baikonur">Байконур</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Площадь, м²</span>
+            <input name="area" type="number" inputmode="decimal" min="10" max="500" step="0.1" placeholder="Например, 60" required>
+          </label>
+          <label class="field">
+            <span>Комнат</span>
+            <select name="rooms">
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4 и больше</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Год постройки</span>
+            <select name="year">
+              <option value="y1">до 1970</option>
+              <option value="y2">1970–1989</option>
+              <option value="y3">1990–1999</option>
+              <option value="y4">2000–2009</option>
+              <option value="y5" selected>2010–2014</option>
+              <option value="y6">2015–2019</option>
+              <option value="y7">2020 и новее</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Состояние</span>
+            <select name="condition">
+              <option value="bad">Без ремонта</option>
+              <option value="mid" selected>Косметический ремонт</option>
+              <option value="good">Хороший ремонт</option>
+              <option value="top">Дизайнерский ремонт</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Класс жилья</span>
+            <select name="tier">
+              <option value="econ">Эконом</option>
+              <option value="comf" selected>Комфорт</option>
+              <option value="biz">Бизнес</option>
+              <option value="prem">Премиум</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Этаж</span>
+            <select name="floor">
+              <option value="first">Первый</option>
+              <option value="mid" selected>Средний</option>
+              <option value="last">Последний</option>
+            </select>
+          </label>
+          <p class="form__error calc__error" id="calc-error" role="alert" hidden>Укажите площадь от 10 до 500 м².</p>
+          <button class="btn btn--primary calc__go" type="submit">
+            <svg class="ic" aria-hidden="true"><use href="#i-calc"/></svg>Рассчитать
+          </button>
+        </form>
+
+        <div class="calc__result" aria-live="polite">
+          <div class="calc__placeholder" id="calc-placeholder">
+            <svg class="ic" aria-hidden="true"><use href="#i-calc"/></svg>
+            <p>Укажите площадь и нажмите «Рассчитать» — покажем примерный диапазон цены.</p>
+          </div>
+          <div class="calc__answer" id="calc-answer" hidden>
+            <p class="calc__label">Примерная стоимость</p>
+            <p class="calc__sum" id="calc-sum">—</p>
+            <p class="calc__ppm" id="calc-ppm"></p>
+            <p class="calc__warn"><strong>Важно.</strong> При составлении отчёта об оценке стоимость может измениться как в большую, так и в меньшую сторону после осмотра объекта и изучения документации.</p>
+            <div class="calc__cta">
+              <a class="btn btn--primary" id="calc-wa" href="https://wa.me/77075251000" target="_blank" rel="noopener">
+                <svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg>Заказать точную оценку
+              </a>
+              <a class="btn btn--light" id="calc-krisha" href="https://krisha.kz/prodazha/kvartiry/astana/" target="_blank" rel="noopener">
+                <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span id="calc-krisha-text">Квартиры на Krisha.kz</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="calc__source">Основа расчёта — средняя цена предложения квартир в Астане <strong>617&nbsp;300&nbsp;₸ за м²</strong> по данным <a href="https://krisha.kz/" target="_blank" rel="noopener">Krisha.kz</a> на 18&nbsp;ноября 2026&nbsp;года, с поправками на район, комнатность, год постройки, ремонт, класс жилья и этаж. Это ориентир, а не отчёт об оценке.</p>
     </div>
   </section>
 
@@ -285,12 +390,12 @@
     <div class="container promo__inner reveal">
       <div class="promo__badge" aria-hidden="true">
         <span class="promo__pct">−10%</span>
-        <span class="promo__for">на оценку<br>для кредитования</span>
+        <span class="promo__for">новым<br>клиентам</span>
       </div>
       <div class="promo__copy">
         <p class="eyebrow eyebrow--light">Для новых клиентов</p>
-        <h2 id="promo-title">Пришли к нам из социальных сетей — получи скидку!</h2>
-        <p>Скидка 10% на оценку для кредитования. Назовите промокод, когда будете писать или звонить нам.</p>
+        <h2 id="promo-title">Скидка 10% по промокоду</h2>
+        <p>Назовите промокод, когда будете писать или звонить нам, — и скидка ваша.</p>
         <ul class="promo__perks">
           <li><svg class="ic" aria-hidden="true"><use href="#i-handshake"/></svg>Профессиональная оценка</li>
           <li><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg>Быстро и удобно</li>
@@ -298,12 +403,23 @@
         </ul>
       </div>
       <div class="promo__code">
-        <span class="promo__label">Промокод</span>
-        <button class="promo__codebtn" type="button" data-copy="CREDIT10%" aria-label="Скопировать промокод CREDIT10%">
-          CREDIT10%<svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>
-        </button>
+        <span class="promo__label">Промокоды</span>
+        <div class="promo__codes">
+          <div class="promo__item">
+            <button class="promo__codebtn" type="button" data-copy="SOCIAL10" aria-label="Скопировать промокод SOCIAL10">
+              SOCIAL10<svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>
+            </button>
+            <span class="promo__hint">если вы пришли из соцсетей</span>
+          </div>
+          <div class="promo__item">
+            <button class="promo__codebtn" type="button" data-copy="REALTY10" aria-label="Скопировать промокод REALTY10">
+              REALTY10<svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>
+            </button>
+            <span class="promo__hint">на оценку недвижимости</span>
+          </div>
+        </div>
         <span class="promo__copied" role="status" aria-live="polite"></span>
-        <a class="btn btn--primary btn--block" href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa="Здравствуйте! Нужна оценка для кредита. Промокод CREDIT10%">
+        <a class="btn btn--primary btn--block" href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa="Здравствуйте! Хочу заказать оценку со скидкой 10% по промокоду.">
           <svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg>Получить скидку
         </a>
       </div>
@@ -417,6 +533,10 @@
         <p class="eyebrow">О компании</p>
         <h2>Кто мы?</h2>
         <p class="about__lead"><strong>ADAL PRICE</strong> — профессиональная оценочная компания, объединяющая <span class="c-red">квалифицированных специалистов</span> с&nbsp;практическим опытом в банковском, финансовом секторах и оценочной деятельности.</p>
+        <div class="about__expert">
+          <span class="about__years"><b>20+</b>лет<br>в оценке</span>
+          <p><strong>Ринат Балгазин</strong> — директор и эксперт-оценщик ADAL PRICE. Работает в оценке более 20&nbsp;лет.</p>
+        </div>
 
         <div class="features">
           <div class="feature reveal">
@@ -541,9 +661,9 @@
           <span>Комментарий</span>
           <textarea name="comment" rows="3" placeholder="Город, адрес или район, площадь, сроки — всё, что важно"></textarea>
         </label>
-        <label class="check">
-          <input type="checkbox" name="promo" value="CREDIT10%">
-          <span>Я новый клиент — применить промокод <strong>CREDIT10%</strong> (−10% на оценку для кредитования)</span>
+        <label class="field">
+          <span>Промокод (если есть)</span>
+          <input name="promo" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Например, SOCIAL10">
         </label>
         <p class="form__error" id="form-error" role="alert" hidden>Укажите номер телефона, чтобы мы могли с вами связаться.</p>
         <button class="btn btn--primary btn--block" type="submit">
@@ -617,6 +737,7 @@
       </span>
     </a>
     <nav class="footer__nav" aria-label="Нижнее меню">
+      <a href="#calculator">Калькулятор</a>
       <a href="#services">Услуги</a>
       <a href="#process">Как работаем</a>
       <a href="#documents">Документы</a>
