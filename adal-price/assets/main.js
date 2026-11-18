@@ -217,6 +217,99 @@
     });
   }
 
+  /* Thank-you letters, published by the company in /admin */
+  var lettersBox = document.getElementById('letters');
+  if (lettersBox && window.fetch) {
+    fetch('/api/letters', { cache: 'no-cache' })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        var letters = (data && data.letters) || [];
+        if (!letters.length) return;
+        var images = letters.filter(function (l) { return l.kind !== 'pdf'; });
+        var grid = document.getElementById('letters-grid');
+        var dialog = document.getElementById('lightbox');
+        var big = document.getElementById('lightbox-img');
+        var caption = document.getElementById('lightbox-cap');
+        var current = 0;
+        var svgIcon = function (id) {
+          var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+          svg.setAttribute('class', 'ic');
+          svg.setAttribute('aria-hidden', 'true');
+          use.setAttribute('href', id);
+          svg.appendChild(use);
+          return svg;
+        };
+        var label = function (l) { return l.title + (l.date ? ' · ' + l.date : ''); };
+
+        function openLetter(i) {
+          current = (i + images.length) % images.length;
+          var l = images[current];
+          big.src = '/letters/' + l.id + '/full.jpg';
+          big.width = l.w;
+          big.height = l.h;
+          big.alt = 'Благодарственное письмо: ' + l.title;
+          caption.textContent = label(l);
+          if (!dialog.showModal) { window.open(big.src, '_blank', 'noopener'); return; }
+          if (!dialog.open) dialog.showModal();
+        }
+
+        letters.forEach(function (l) {
+          var item = document.createElement('li');
+          var card;
+          if (l.kind === 'pdf') {
+            card = document.createElement('a');
+            card.href = '/letters/' + l.id + '.pdf';
+            card.target = '_blank';
+            card.rel = 'noopener';
+            card.className = 'letter letter--pdf';
+            var doc = document.createElement('span');
+            doc.className = 'letter__doc';
+            doc.appendChild(svgIcon('#i-file'));
+            card.appendChild(doc);
+          } else {
+            card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'letter';
+            var img = document.createElement('img');
+            img.src = '/letters/' + l.id + '/thumb.jpg';
+            img.alt = 'Благодарственное письмо: ' + l.title;
+            img.loading = 'lazy';
+            img.width = 600;
+            img.height = Math.round(600 * (l.h || 1414) / (l.w || 1000));
+            card.appendChild(img);
+            card.addEventListener('click', function () { openLetter(images.indexOf(l)); });
+          }
+          var title = document.createElement('span');
+          title.className = 'letter__title';
+          title.textContent = l.title;
+          card.appendChild(title);
+          if (l.date) {
+            var date = document.createElement('span');
+            date.className = 'letter__date';
+            date.textContent = l.date;
+            card.appendChild(date);
+          }
+          item.appendChild(card);
+          grid.appendChild(item);
+        });
+
+        dialog.querySelectorAll('[data-step]').forEach(function (btn) {
+          btn.hidden = images.length < 2;
+          btn.addEventListener('click', function () { openLetter(current + Number(btn.getAttribute('data-step'))); });
+        });
+        dialog.querySelector('[data-close]').addEventListener('click', function () { dialog.close(); });
+        dialog.addEventListener('click', function (e) { if (e.target === dialog) dialog.close(); });
+        dialog.addEventListener('keydown', function (e) {
+          if (images.length < 2) return;
+          if (e.key === 'ArrowRight') openLetter(current + 1);
+          if (e.key === 'ArrowLeft') openLetter(current - 1);
+        });
+        lettersBox.hidden = false;
+      })
+      .catch(function () { /* no letters service (e.g. plain static hosting): the block stays hidden */ });
+  }
+
   /* Footer year */
   var year = document.getElementById('year');
   if (year) year.textContent = new Date().getFullYear();

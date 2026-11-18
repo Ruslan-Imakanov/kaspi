@@ -1,2 +1,4 @@
 deploy/.build/
 .wrangler/
+deploy/.wrangler/
+deploy/.dev.vars

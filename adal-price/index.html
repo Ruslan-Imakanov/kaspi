@@ -573,6 +573,17 @@
         <p class="adal__slogan">Ваша уверенность в цифрах</p>
       </div>
     </div>
+
+    <!-- Thank-you letters: filled from /api/letters, hidden while there are none -->
+    <div class="container">
+      <div class="letters" id="letters" hidden>
+        <div class="letters__head">
+          <h3>Благодарственные письма</h3>
+          <p>Что говорят о нашей работе клиенты — в их собственных письмах.</p>
+        </div>
+        <ul class="letters__grid" id="letters-grid"></ul>
+      </div>
+    </div>
   </section>
 
   <!-- FACTORS -->
@@ -770,6 +781,22 @@
   <a class="dock__btn" href="tel:+77075251000"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>Позвонить</a>
   <a class="dock__btn dock__btn--wa" href="https://wa.me/77075251000" target="_blank" rel="noopener" data-wa><svg class="ic ic--fill" aria-hidden="true"><use href="#i-wa"/></svg>WhatsApp</a>
 </nav>
+
+<dialog class="lightbox" id="lightbox" aria-label="Благодарственное письмо">
+  <button class="lightbox__btn lightbox__close" type="button" data-close aria-label="Закрыть">
+    <svg class="ic" aria-hidden="true"><use href="#i-close"/></svg>
+  </button>
+  <button class="lightbox__btn lightbox__nav lightbox__nav--prev" type="button" data-step="-1" aria-label="Предыдущее письмо">
+    <svg class="ic ic--flip" aria-hidden="true"><use href="#i-arrow"/></svg>
+  </button>
+  <figure class="lightbox__figure">
+    <img id="lightbox-img" src="data:," alt="">
+    <figcaption id="lightbox-cap"></figcaption>
+  </figure>
+  <button class="lightbox__btn lightbox__nav lightbox__nav--next" type="button" data-step="1" aria-label="Следующее письмо">
+    <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg>
+  </button>
+</dialog>
 
 <script src="assets/main.js" defer></script>
 </body>

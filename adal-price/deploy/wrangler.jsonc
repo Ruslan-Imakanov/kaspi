@@ -7,6 +7,9 @@
   "compatibility_date": "2025-09-01",
   "workers_dev": true,
   "preview_urls": false,
+  // Thank-you letters (cabinet at /admin): one SQLite-backed Durable Object.
+  "durable_objects": { "bindings": [{ "name": "LETTERS", "class_name": "LettersStore" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LettersStore"] }],
   // Images are bundled as binary modules: no base64 decoding per request.
   "rules": [
     { "type": "Data", "globs": ["**/*.png", "**/*.jpg", "**/*.webp", "**/*.ico"], "fallthrough": false }
